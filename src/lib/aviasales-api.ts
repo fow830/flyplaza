@@ -24,7 +24,6 @@ export interface AviasalesTicket {
   value?: number; // Цена (альтернативное поле)
   trip_class?: number;
   show_to_affiliates?: boolean;
-  return_date?: string;
   origin: string;
   destination: string;
   gate?: string; // Авиакомпания
