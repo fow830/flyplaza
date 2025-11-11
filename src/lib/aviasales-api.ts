@@ -17,6 +17,7 @@ export interface AviasalesSearchParams {
 export interface AviasalesSearchResponse {
   search_id: string;
   status: string;
+  data?: any[]; // Массив билетов, если API возвращает данные напрямую
 }
 
 export interface AviasalesTicket {
