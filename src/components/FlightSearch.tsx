@@ -449,15 +449,15 @@ export default function FlightSearch() {
         <div className="inline-block">
           <h1 className="text-7xl font-black tracking-tight relative">
             {/* Основной текст с градиентом */}
-            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent animate-gradient">
+            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent">
               Fly
             </span>
-            <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 bg-clip-text text-transparent animate-gradient-reverse">
+            <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 bg-clip-text text-transparent">
               Plaza
             </span>
             
             {/* Декоративная линия под текстом */}
-            <div className="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-rose-500 rounded-full transform scale-x-75 group-hover:scale-x-100 transition-transform duration-300"></div>
+            <div className="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-rose-500 rounded-full transform scale-x-75"></div>
           </h1>
           
           {/* Подзаголовок */}
