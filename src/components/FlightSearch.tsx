@@ -444,19 +444,31 @@ export default function FlightSearch() {
 
   return (
     <div className="w-full max-w-7xl mx-auto">
+      {/* Логотип FlyPlaza */}
+      <div className="text-center mb-12 py-8">
+        <div className="inline-block">
+          <h1 className="text-7xl font-black tracking-tight relative">
+            {/* Основной текст с градиентом */}
+            <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 bg-clip-text text-transparent animate-gradient">
+              Fly
+            </span>
+            <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-rose-600 bg-clip-text text-transparent animate-gradient-reverse">
+              Plaza
+            </span>
+            
+            {/* Декоративная линия под текстом */}
+            <div className="absolute -bottom-2 left-0 right-0 h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-rose-500 rounded-full transform scale-x-75 group-hover:scale-x-100 transition-transform duration-300"></div>
+          </h1>
+          
+          {/* Подзаголовок */}
+          <p className="text-sm font-medium text-gray-500 mt-4 tracking-widest uppercase">
+            Найди свой идеальный полет
+          </p>
+        </div>
+      </div>
+
       {/* Поисковая форма */}
       <div className="bg-white/90 backdrop-blur-lg rounded-3xl shadow-2xl border border-gray-100 p-8 mb-8">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center shadow-lg">
-            <svg className="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-            </svg>
-          </div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-            Поиск авиабилетов
-          </h2>
-        </div>
-        
         <div className="space-y-6">
           {/* Аэропорты */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

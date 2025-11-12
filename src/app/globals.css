@@ -20,4 +20,37 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Анимации для логотипа FlyPlaza */
+@keyframes gradient-shift {
+  0%, 100% {
+    background-size: 200% 200%;
+    background-position: left center;
+  }
+  50% {
+    background-size: 200% 200%;
+    background-position: right center;
+  }
+}
+
+@keyframes gradient-shift-reverse {
+  0%, 100% {
+    background-size: 200% 200%;
+    background-position: right center;
+  }
+  50% {
+    background-size: 200% 200%;
+    background-position: left center;
+  }
+}
+
+.animate-gradient {
+  animation: gradient-shift 8s ease infinite;
+  background-size: 200% 200%;
+}
+
+.animate-gradient-reverse {
+  animation: gradient-shift-reverse 8s ease infinite;
+  background-size: 200% 200%;
+}
+
 
