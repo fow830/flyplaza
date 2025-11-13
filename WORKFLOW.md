@@ -95,16 +95,20 @@ git checkout stage
 
 **Команда:**
 ```bash
-./deploy-to-server.sh
+./deploy-production.sh
 ```
 
 **Что происходит:**
 - Подключение к серверу Timeweb
+- Создание скрипта деплоя на сервере
+- Запуск деплоя в screen сессии (для надежности)
 - Получение последней версии с ветки `production`
-- Пересборка Docker-образа
+- Пересборка Docker-образа (занимает ~2 минуты)
 - Перезапуск контейнера
 
 **Результат:** Сайт обновлен на https://flyplaza.ru
+
+**⏳ Время выполнения:** ~2-3 минуты (скрипт ждет завершения)
 
 ---
 
@@ -132,7 +136,7 @@ git checkout stage
                          ↓
 ┌──────────────────────────────────────────────────────────┐
 │ 4. SERVER (flyplaza.ru)                                  │
-│    • ./deploy-to-server.sh                               │
+│    • ./deploy-production.sh                              │
 │    • Сайт обновлен                                       │
 └──────────────────────────────────────────────────────────┘
 ```
@@ -191,7 +195,7 @@ git log --oneline --graph
 
 - `commit-to-stage.sh` - коммит изменений в stage
 - `merge-to-production.sh` - мерж stage → production
-- `deploy-to-server.sh` - деплой production → server
+- `deploy-production.sh` - деплой production → server (через screen)
 - `WORKFLOW.md` - эта инструкция
 
 ---
@@ -226,7 +230,7 @@ git restore .
 - [ ] Изменения закоммичены в stage (./commit-to-stage.sh)
 - [ ] Stage проверен и стабилен
 - [ ] Смержено в production (./merge-to-production.sh)
-- [ ] Готово к деплою (./deploy-to-server.sh)
+- [ ] Готово к деплою (./deploy-production.sh)
 
 ---
 
