@@ -40,7 +40,7 @@ export default function FlightSearch() {
   const [destinationValid, setDestinationValid] = useState<boolean | null>(null);
   
   // Информация об аэропортах
-  const [originAirport, setOriginAirport] = useState<Airport | undefined>(undefined);
+  const [originAirports, setOriginAirports] = useState<Airport[]>([]); // Массив выбранных аэропортов отправления
   const [destinationAirports, setDestinationAirports] = useState<Airport[]>([]); // Массив выбранных аэропортов назначения
   const [startDate, setStartDate] = useState(''); // Пустое поле по умолчанию
   const [endDate, setEndDate] = useState(''); // Пустое поле по умолчанию
@@ -119,48 +119,53 @@ export default function FlightSearch() {
       const isValidFormat = validateIATACode(upperValue);
       if (!isValidFormat) {
         setOriginValid(false);
-        setOriginAirport(undefined);
         setOriginSearchResults([]);
         return;
       }
       
       // Показываем состояние загрузки
       setOriginValid(null);
-      setOriginAirport(undefined);
       setOriginSearchResults([]);
       
       // Валидируем через API
       const validation = await validateAirportCode(upperValue);
       setOriginValid(validation.valid);
       if (validation.valid && validation.airport) {
-        setOriginAirport(validation.airport);
+        // Автоматически добавляем в список, если еще не добавлен
+        const airportData = getAirportByCode(upperValue);
+        if (airportData && !originAirports.find(a => a.code === upperValue)) {
+          setOriginAirports([...originAirports, airportData]);
+          setOrigin('');
+        }
         setShowOriginResults(false);
-      } else {
-        setOriginAirport(undefined);
       }
     } else if (value.length >= 2) {
       // Ищем города и аэропорты
       setOriginValid(null);
-      setOriginAirport(undefined);
       const results = await searchCities(value);
       setOriginSearchResults(results);
     } else {
       setOriginValid(null);
-      setOriginAirport(undefined);
       setOriginSearchResults([]);
     }
   };
 
   // Выбор результата поиска для вылета
   const handleOriginSelect = (result: any) => {
-    setOrigin(result.airport.code);
-    setOriginAirport({
+    const newAirport: Airport = {
       code: result.airport.code,
       name: result.airport.name,
       city: result.airport.city,
       country: result.city.country || '',
-    });
-    setOriginValid(true);
+    };
+    
+    // Проверяем, не добавлен ли уже этот аэропорт
+    if (!originAirports.find(a => a.code === newAirport.code)) {
+      setOriginAirports([...originAirports, newAirport]);
+    }
+    
+    setOrigin('');
+    setOriginValid(null);
     setOriginSearchResults([]);
     setShowOriginResults(false);
   };
@@ -244,12 +249,29 @@ export default function FlightSearch() {
     setShowDestinationResults(false);
   };
 
+  // Удаление аэропорта из списка отправлений
+  const removeOriginAirport = (code: string) => {
+    setOriginAirports(originAirports.filter(a => a.code !== code));
+  };
+
   // Удаление аэропорта из списка назначений
   const removeDestinationAirport = (code: string) => {
     setDestinationAirports(destinationAirports.filter(a => a.code !== code));
   };
 
-  // Добавление топ-10 аэропортов Европы
+  // Добавление топ-10 аэропортов Европы для отправления
+  const addTopEuropeanAirportsOrigin = () => {
+    const newAirports = [...originAirports];
+    TOP_10_EUROPEAN_AIRPORTS.forEach(airport => {
+      // Добавляем только те, которые еще не добавлены
+      if (!newAirports.find(a => a.code === airport.code)) {
+        newAirports.push(airport);
+      }
+    });
+    setOriginAirports(newAirports);
+  };
+
+  // Добавление топ-10 аэропортов Европы для назначения
   const addTopEuropeanAirports = () => {
     const newAirports = [...destinationAirports];
     TOP_10_EUROPEAN_AIRPORTS.forEach(airport => {
@@ -263,13 +285,8 @@ export default function FlightSearch() {
 
   const handleSearch = async () => {
     // Валидация
-    if (!origin) {
-      setError('Пожалуйста, введите код аэропорта вылета');
-      return;
-    }
-    
-    if (originValid !== true) {
-      setError('Пожалуйста, введите корректный код аэропорта вылета');
+    if (originAirports.length === 0) {
+      setError('Пожалуйста, выберите хотя бы один аэропорт вылета');
       return;
     }
     
@@ -313,7 +330,6 @@ export default function FlightSearch() {
     setProgress(null);
 
     try {
-      const originCode = originAirport?.code || origin.toUpperCase();
       const allTickets: FlightTicket[] = [];
       
       // Генерируем массив дат
@@ -326,22 +342,25 @@ export default function FlightSearch() {
         currentDate.setDate(currentDate.getDate() + 1);
       }
       
-      const totalRequests = dates.length * destinationAirports.length;
+      const totalRequests = dates.length * originAirports.length * destinationAirports.length;
       let completedRequests = 0;
 
-      // Проходим сначала по датам, затем по аэропортам
+      // Проходим сначала по датам, затем по аэропортам вылета, затем по аэропортам прилета
       for (const date of dates) {
-        for (const destAirport of destinationAirports) {
-          const destinationCode = destAirport.code;
+        for (const origAirport of originAirports) {
+          const originCode = origAirport.code;
           
-          const params = new URLSearchParams({
-            origin: originCode,
-            destination: destinationCode,
-            startDate: date,
-            endDate: date, // Ищем только на одну дату
-            passengers: '1',
-            maxTransfers: maxTransfers.toString(),
-          });
+          for (const destAirport of destinationAirports) {
+            const destinationCode = destAirport.code;
+            
+            const params = new URLSearchParams({
+              origin: originCode,
+              destination: destinationCode,
+              startDate: date,
+              endDate: date, // Ищем только на одну дату
+              passengers: '1',
+              maxTransfers: maxTransfers.toString(),
+            });
 
           const response = await fetch(`/api/flights/search?${params.toString()}`);
           
@@ -413,14 +432,15 @@ export default function FlightSearch() {
             }
           }
 
-          completedRequests++;
-          setProgress({
-            current: completedRequests,
-            total: totalRequests,
-            date: date,
-            percentage: Math.round((completedRequests / totalRequests) * 100),
-            ticketsFound: allTickets.length,
-          });
+            completedRequests++;
+            setProgress({
+              current: completedRequests,
+              total: totalRequests,
+              date: date,
+              percentage: Math.round((completedRequests / totalRequests) * 100),
+              ticketsFound: allTickets.length,
+            });
+          }
         }
       }
 
@@ -445,7 +465,7 @@ export default function FlightSearch() {
   return (
     <div className="w-full max-w-7xl mx-auto">
       {/* Логотип FlyPlaza */}
-      <div className="text-center mb-12 py-8">
+      <div className="text-center mb-4 py-3">
         <div className="inline-block">
           <h1 className="text-7xl font-black tracking-tight relative">
             {/* Основной текст с градиентом */}
@@ -473,14 +493,52 @@ export default function FlightSearch() {
           {/* Аэропорты */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div>
-              <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center shadow-md">
-                  <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+              <div className="flex items-center justify-between mb-3">
+                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+                  <div className="w-8 h-8 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-lg flex items-center justify-center shadow-md">
+                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+                    </svg>
+                  </div>
+                  Аэропорты вылета *
+                </label>
+                <button
+                  type="button"
+                  onClick={addTopEuropeanAirportsOrigin}
+                  disabled={loading}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-amber-700 bg-gradient-to-r from-amber-50 to-yellow-50 hover:from-amber-100 hover:to-yellow-100 border-2 border-amber-200 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                   </svg>
+                  Топ-10 Европы
+                </button>
+              </div>
+              
+              {/* Выбранные аэропорты */}
+              {originAirports.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {originAirports.map((airport) => (
+                    <span
+                      key={airport.code}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-800 rounded-full text-sm font-semibold shadow-sm border border-emerald-200"
+                    >
+                      {airport.city} ({airport.code})
+                      <button
+                        type="button"
+                        onClick={() => removeOriginAirport(airport.code)}
+                        className="ml-1 hover:text-emerald-900 focus:outline-none"
+                        disabled={loading}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </span>
+                  ))}
                 </div>
-                Аэропорт вылета *
-              </label>
+              )}
+              
               <div className="relative">
                 <input
                   type="text"
@@ -548,10 +606,6 @@ export default function FlightSearch() {
               }`}>
                 {origin.length === 0
                   ? 'Введите название города (Москва, Moscow) или код IATA (LED, SVO, IST)'
-                  : originValid === true && originAirport && originAirport.city
-                  ? `✓ ${originAirport.city}${originAirport.name ? `, ${originAirport.name}` : ''}`
-                  : originValid === true
-                  ? `✓ Код корректен`
                   : originValid === false
                   ? '✗ Аэропорт не найден'
                   : originSearchResults.length > 0
@@ -764,64 +818,9 @@ export default function FlightSearch() {
             </select>
           </div>
 
-          {/* Информация о поиске */}
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-100 rounded-2xl p-6 shadow-sm">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">Направление</p>
-                  <p className="text-sm text-gray-900 font-semibold">В одну сторону</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-teal-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">Пересадки</p>
-                  <p className="text-sm text-gray-900 font-semibold">
-                    {maxTransfers === 0 
-                      ? 'Прямые'
-                      : maxTransfers === -1
-                      ? 'Любые'
-                      : `До ${maxTransfers}`}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-purple-500 rounded-xl flex items-center justify-center shadow-md flex-shrink-0">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">Пассажиры</p>
-                  <p className="text-sm text-gray-900 font-semibold">1 взрослый</p>
-                </div>
-              </div>
-            </div>
-            {startDate && endDate && (
-              <div className="mt-4 pt-4 border-t border-blue-200">
-                <p className="text-sm text-gray-600 flex items-center gap-2">
-                  <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  Будет проверено <strong className="text-blue-600">{Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1}</strong> {Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24)) + 1 === 1 ? 'дата' : 'дат'} по <strong className="text-blue-600">{destinationAirports.length}</strong> {destinationAirports.length === 1 ? 'направлению' : 'направлениям'}
-                </p>
-              </div>
-            )}
-          </div>
-
           <button
             onClick={handleSearch}
-            disabled={loading || originValid !== true || destinationAirports.length === 0 || !startDate || !endDate}
+            disabled={loading || originAirports.length === 0 || destinationAirports.length === 0 || !startDate || !endDate}
             className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white py-4 px-8 rounded-2xl font-bold text-lg shadow-xl hover:shadow-2xl disabled:from-gray-300 disabled:to-gray-400 disabled:cursor-not-allowed disabled:shadow-none transition-all duration-300 transform hover:-translate-y-0.5"
           >
             {loading ? (
@@ -1004,37 +1003,12 @@ export default function FlightSearch() {
                         <SortIcon column="date" />
                       </span>
                     </th>
-                    <th 
-                      className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200 cursor-pointer hover:bg-gray-200 select-none transition-colors"
-                      onClick={() => handleSort('departureTime')}
-                    >
-                      <span className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-                        </svg>
-                        Вылет
-                        <SortIcon column="departureTime" />
-                      </span>
-                    </th>
-                    <th 
-                      className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200 cursor-pointer hover:bg-gray-200 select-none transition-colors"
-                      onClick={() => handleSort('arrivalTime')}
-                    >
-                      <span className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                        </svg>
-                        Прилет
-                        <SortIcon column="arrivalTime" />
-                      </span>
-                    </th>
                     <th className="px-4 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider border-b-2 border-gray-200">
                       <span className="flex items-center gap-2">
-                        <svg className="w-4 h-4 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <svg className="w-4 h-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                         </svg>
-                        Аэропорт прилета
+                        Полет Туда
                       </span>
                     </th>
                     <th 
@@ -1115,29 +1089,14 @@ export default function FlightSearch() {
                         <div className="font-semibold text-gray-900">{formatDate(ticket.date)}</div>
                         <div className="text-xs text-gray-500 font-medium">{formatDateShort(ticket.date)}</div>
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {ticket.departureTime || '—'}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900">
-                        {ticket.arrivalTime || '—'}
-                      </td>
-                      <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900">
-                        {(() => {
-                          const destCode = ticket.destination;
-                          if (destCode) {
-                            const airport = getAirportByCode(destCode);
-                            if (airport) {
-                              return (
-                                <div>
-                                  <div className="font-medium">{airport.city}</div>
-                                  <div className="text-xs text-gray-500">{airport.name} ({destCode})</div>
-                                </div>
-                              );
-                            }
-                            return destCode;
-                          }
-                          return '—';
-                        })()}
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
+                        <div className="flex items-center gap-2">
+                          <span className="text-emerald-600">{ticket.origin || '—'}</span>
+                          <span className="text-gray-500">{ticket.departureTime || '—'}</span>
+                          <span className="text-gray-400">›</span>
+                          <span className="text-blue-600">{ticket.destination || '—'}</span>
+                          <span className="text-gray-500">{ticket.arrivalTime || '—'}</span>
+                        </div>
                       </td>
                       <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-600">
                         {ticket.duration || '—'}

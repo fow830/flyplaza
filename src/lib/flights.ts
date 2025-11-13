@@ -8,6 +8,7 @@ export interface FlightTicket {
   link: string;
   isDirect?: boolean; // Прямой рейс (без пересадок)
   transfers?: number; // Количество пересадок
+  origin?: string; // Код аэропорта вылета
   destination?: string; // Код аэропорта назначения
 }
 

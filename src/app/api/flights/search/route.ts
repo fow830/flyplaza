@@ -12,6 +12,7 @@ import { searchFlights, AviasalesSearchParams } from '@/lib/aviasales-api';
 function convertAviasalesTicketToFlightTicket(
   ticket: any,
   date: string,
+  origin: string,
   destination: string
 ): FlightTicket {
   // Определяем цену
@@ -67,6 +68,7 @@ function convertAviasalesTicketToFlightTicket(
     link,
     isDirect,
     transfers,
+    origin: ticket.origin_airport || ticket.origin || origin,
     destination: ticket.destination_airport || ticket.destination || destination,
   };
 }
@@ -165,7 +167,7 @@ async function searchFlightsForDateRange(
 
       // Преобразуем в наш формат
       const convertedTickets = filteredTickets.map(t => 
-        convertAviasalesTicketToFlightTicket(t, date, destination)
+        convertAviasalesTicketToFlightTicket(t, date, origin, destination)
       );
 
       allTickets.push(...convertedTickets);
